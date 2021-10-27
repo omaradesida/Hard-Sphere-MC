@@ -3,7 +3,7 @@ import joblib
 import os
 
 
-def alkane_MC(pressure, solid, maindir):
+def alkane_MC(pressure, solid, maindir, Nbeads = 4, Nchains = 250):
     
     
     
@@ -50,13 +50,6 @@ def alkane_MC(pressure, solid, maindir):
         return box_config  # Returns ASE atom object
 
 
-
-
-
-
-
-    Nbeads  = 4    # Butane
-    Nchains = 250  # 250 chains in chain.xmol
 
     # Initialise the simulation box and alkane module ready to hold chains
 
@@ -164,7 +157,7 @@ def alkane_MC(pressure, solid, maindir):
     #io.write(f"{workingdir}/configurations.dcd", mk_ase_config(ibox, Nbeads, Nchains), format="psf")
     traj = io.Trajectory(f"{workingdir}/configs.traj", mode='a')
     traj.write(atoms = mk_ase_config(ibox,Nbeads,Nchains))
-
+    
 
     
 
@@ -173,7 +166,7 @@ def alkane_MC(pressure, solid, maindir):
         mdl.alkane_set_dr_max(0.012)
         mdl.alkane_set_dt_max(0.07)
         mdl.alkane_set_dh_max(0.06)
-        mdl.box_set_isotropic(1)
+        mdl.box_set_isotropic(0)
         mdl.alkane_set_dv_max(0.03  )
 
 
@@ -189,10 +182,16 @@ def alkane_MC(pressure, solid, maindir):
 
 
    # Move types
+
+
+    Sweeps_per_walk = 3*Nchains+1
+
+
     move_types = ['box','translate', 'rotate', 'dihedral']
     ivol = 0; itrans = 1; irot = 2; idih = 3
     moves_attempted = np.zeros(4)
     moves_accepted  = np.zeros(4)
+
 
     #adjusting mc step
     mc_adjust_interval = 1000
@@ -207,7 +206,7 @@ def alkane_MC(pressure, solid, maindir):
     isweep_equil = 0
 
     #Equilibration parameters
-    equil_sweeps = 100000 #steps to do until fully equilibrated
+    equil_sweeps = 50000 #steps to do until fully equilibrated
     equil_moves_attempted = np.zeros(4)
     equil_moves_accepted  = np.zeros(4)
     sample_sweeps= 100000 #number of steps to do once equilibrated
@@ -283,6 +282,9 @@ def alkane_MC(pressure, solid, maindir):
 
         if isweep % 10000 == 0:
             logfile.write(f"{isweep} steps have been performed for {pressure} pressure in state {state}\n")
+            
+            
+        
 
 
          
@@ -457,9 +459,6 @@ def alkane_MC(pressure, solid, maindir):
     else:
         logfile.write("No overlaps between chains found in configuration \n")
         
-
-    #autocorrelation done by hand
-
     equil_samples = samples[-(sample_sweeps//sample_interval):]
 
 
@@ -509,8 +508,7 @@ def alkane_MC(pressure, solid, maindir):
 
 
     # Save volume samples
-
-###############################################################
+    
     logfile.write(f"Attempting to destroy simulation box \n")
 
     mdl.alkane_destroy()
@@ -519,41 +517,15 @@ def alkane_MC(pressure, solid, maindir):
 
     logfile.write(f"Simulation box destroyed \n")
 
-    logfile.close()
+    logfile.close()    
 
-    del mdl
-
-
+###########################################
     
     
-
-
-
-
-
-
-conditions = ((2.5,False),
-              (3.5,False),
-              (23,False),
-              (25,False),
-              (27,False),
-              (29,False),
-              (31,False),
-              (21,False),
-              (27,False),
-              (29,False),
-              (31,False),
-              )
-   
-#p_array = [0.25,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,6,7,8,9,10,12,14,16,18,20,24,28,32,36,40,44,48,50]
-#Bool_array = [True,False] 
-
-maindir = "PvV_results_10/"
+maindir = "./"
 
 if not os.path.exists(maindir):
     os.makedirs(maindir)
 with joblib.parallel_backend("multiprocessing"):
-    Parallel(n_jobs=10)(delayed(alkane_MC)(pressure = i, solid = False, maindir = maindir) for i in range(10,60,5))
-#alkane_MC(10,False)
-#try running in serial
-#output move sizes with configurations
+    Parallel(n_jobs=10)(delayed(alkane_MC)(pressure = i, solid = False, maindir = maindir) for i in range(10,50,5))
+
